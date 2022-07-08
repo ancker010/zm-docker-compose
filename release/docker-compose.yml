@@ -1,0 +1,64 @@
+version: '3.6'
+
+services:
+  zm-db:
+    container_name: zm-db
+    image: mariadb
+    restart: unless-stopped
+    networks:
+      - traefik-ext
+    volumes:
+      - '/storage/zoneminder/db:/var/lib/mysql:z'
+    environment:
+      - MYSQL_DATABASE=zm
+    env_file:
+      - /storage/zoneminder/env
+
+  zoneminder:
+    container_name: zoneminder
+    # Edit the line below to match tag for the version of ZM and EventServer you want to run.
+    image: ghcr.io/zoneminder-containers/eventserver-base:main-zm_v1.36.14-es_v6.1.28
+    restart: unless-stopped
+    stop_grace_period: 45s
+    depends_on:
+      - zm-db
+    ports:
+      # - 80:80 # These are removed since Traefix handles access.
+      - "8081:80" #So I can access it on internal network on a shared host
+      # - "443:443" # These are removed since Traefix handles access.
+      - "2000:2000"
+      - "9000:9000"
+      - "6802:6802"
+    networks:
+      - traefik-ext
+    devices:
+      - /dev/dri/renderD128:/dev/dri/renderD128
+      - /dev/dri/card0:/dev/dri/card0
+    volumes:
+      - '/storage/zoneminder/data:/data:z'
+      - '/storage/zoneminder/config:/config:z'
+      - '/storage/zoneminder/log:/log:z'
+      - '/storage/docker/zoneminder/kill-nph-zms.sh:/etc/cron.hourly/kill-nph-zms.sh:z'
+      - '/storage/docker/zoneminder/pushapi_pushover.py:/var/lib/zmeventnotification/bin/pushapi_pushover.py:z'
+      - '/storage/zm-events:/old-zm-events:z'
+      - type: tmpfs
+        target: /dev/shm
+        tmpfs:
+          size: 2G
+    env_file:
+      - /storage/zoneminder/env
+    labels:
+      # required when using --providers.docker.exposedbydefault=false
+      - "traefik.enable=true"
+      - "traefik.http.routers.zm.rule=Host(`zm.example.com`)"
+      - "traefik.http.routers.zm.entrypoints=web"
+      - "traefik.http.services.zm.loadbalancer.server.port=80"
+      - "traefik.http.routers.zm.tls=true"
+      - "traefik.http.routers.zm-secure.rule=Host(`zm.example.com`)"
+      - "traefik.http.routers.zm-secure.entrypoints=websecure"
+      - "traefik.http.routers.zm-secure.tls=true"
+      - "traefik.http.routers.zm-secure.tls.certresolver=le"
+
+networks:
+  traefik-ext:
+    external: true
