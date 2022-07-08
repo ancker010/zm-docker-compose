@@ -1,6 +1,8 @@
 ## Usage
 
 Follow the instructions under each folder for the version you want to run.
+Both utilize the contains that are built here: https://github.com/zoneminder-containers
+It's important to note that at the moment, neither these containers or that repo is maintained by anyone officially affiliated with Zoneminder. So support might be limited.
 
 1. `release` once edited to match, this will run the latest "release" version of ZM plus the EventServer with Pushover support.
  - You'll need to edit the `image:` to point to the appropriate version, check docker hub or ghcr.io for which tags are available.
